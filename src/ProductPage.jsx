@@ -10,6 +10,10 @@ import {
   Plus,
   Minus,
   ShoppingBag,
+  Truck,
+  DollarSign,
+  Headphones,
+  Award,
 } from "lucide-react";
 import productVideo from "./assets/Elshorbagy.mp4";
 import logoImg from "./assets/logo.png";
@@ -29,8 +33,10 @@ import citiesData from "./cities.json";
 
 export default function ProductPage() {
   // Default company/subCategories
-  const DEFAULT_COMPANY_ID = "692fffb4e037d2784032b18f";
-  const DEFAULT_SUBCATS = ["69388f1d6d0b1261bbc370c0"];
+  // Read IDs from environment (Vite) with fallbacks for local dev
+  const DEFAULT_COMPANY_ID = import.meta.env.VITE_CRM_COMPANY_ID ;
+  const DEFAULT_SUBCATS = [import.meta.env.VITE_CRM_CATEGORY_ID ];
+  const DEFAULT_BRANCH_ID = import.meta.env.VITE_CRM_BRANCH_ID ;
 
   // Product details
   const productDetails = {
@@ -80,6 +86,7 @@ export default function ProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const videoRef = useRef(null);
+  const [formData, setFormData] = useState({ name: "", phone: "", province: "", city: "", address: "", otherPhones: "", isWhatsapp: false, note: "" });
 
   // --------------------------------------------------------------------------
   // LOOKUPS
@@ -114,9 +121,18 @@ export default function ProductPage() {
   // --------------------------------------------------------------------------
 
   const unitPrice = 250; // Set your actual price
-  const subtotal = unitPrice * quantity;
+  const offers = [
+    { count: 1, price: 499 },
+    { count: 2, price: 899 },
+    { count: 3, price: 1199 },
+  ];
+
+  const [selectedOffer, setSelectedOffer] = useState(0);
+
+  const subtotal = offers[selectedOffer]?.price ?? unitPrice * quantity;
   const delivery = 0; // Free shipping mentioned in requirements
   const grandTotal = subtotal + delivery;
+  const deliveryLabel = delivery === 0 ? "مجانا" : `${delivery} جنيه`;
 
   // --------------------------------------------------------------------------
   // HANDLERS
@@ -136,6 +152,11 @@ export default function ProductPage() {
 
   const handleQuantityChange = (delta) => {
     setQuantity((prev) => Math.max(1, prev + delta));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((s) => ({ ...s, [name]: type === "checkbox" ? checked : value }));
   };
 
   // Attempt autoplay on mount (may be blocked by browser if autoplay with sound is not allowed)
@@ -162,18 +183,25 @@ export default function ProductPage() {
   }, []);
 
   const handleOrderSubmit = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (!formData.name || !formData.phone || !formData.province || !formData.address) {
+      Swal.fire({
+        icon: "error",
+        title: "خطأ",
+        text: "من فضلك أكمل بيانات التوصيل قبل المتابعة",
+        confirmButtonColor: "#2f83aa",
+      });
+      return;
+    }
     setShowModal(true);
   };
 
   const handleConfirmOrder = async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    
-    const name = form.name?.value?.trim();
-    const phone = form.phone?.value?.trim();
-    const province = form.province?.value?.trim();
-    const address = form.address?.value?.trim();
+    if (e && e.preventDefault) e.preventDefault();
+    const name = (formData.name || "").trim();
+    const phone = (formData.phone || "").trim();
+    const province = (formData.province || "").trim();
+    const address = (formData.address || "").trim();
 
     if (!name || !phone) {
       Swal.fire({
@@ -203,26 +231,41 @@ export default function ProductPage() {
         cityId = citiesByName.get(province.toLowerCase()) || null;
       }
 
+      // Product item id can be provided via env for production, otherwise use a placeholder
+      const PRODUCT_ITEM_ID = import.meta.env.VITE_PRODUCT_ITEM_ID || "603b2c3d4e5f678901234567";
+
+      // Parse other phones (comma separated) into an array
+      const otherPhonesArr = (formData.otherPhones || "")
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
       const orderData = {
         name,
         phone,
+        otherPhones: otherPhonesArr,
         addresses: [{
           area: "",
           street: address,
+          city: formData.city || "",
           landmark: "",
         }],
         city: cityId || "",
         company: DEFAULT_COMPANY_ID,
         subCategories: DEFAULT_SUBCATS,
-        items: [{
-          item: "fridge-box-18",
-          quantity: String(quantity),
-        }],
+        isWhatsapp: !!formData.isWhatsapp,
+        items: [
+          {
+            item: PRODUCT_ITEM_ID,
+            quantity: String(quantity),
+          },
+        ],
         shippingFee: String(delivery),
         totalDiscount: "0",
         orderOnly: {
-          userNote: `طقم علب تلاجة الشوربجي - ${quantity} طقم - ${productDetails.name}`,
+          userNote: formData.note || `طقم علب تلاجة الشوربجي - ${quantity} طقم - ${productDetails.name}`,
         },
+        branch: DEFAULT_BRANCH_ID || "",
       };
 
       await addOrder(orderData);
@@ -235,7 +278,7 @@ export default function ProductPage() {
       });
 
       setShowModal(false);
-      form.reset();
+      setFormData({ name: "", phone: "", province: "", city: "", address: "" });
       setQuantity(1);
     } catch (error) {
       console.error("Order error:", error);
@@ -265,11 +308,9 @@ export default function ProductPage() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-[#2f83aa] shadow-sm">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={logoImg}
-              alt="الشوربجي للبلاستيك"
-              className="w-10 h-10 object-cover rounded-full ring-2 ring-[#2f83aa] ring-offset-2"
-            />
+            <div className="w-20 h-20 flex items-center justify-center p-1">
+              <img src={logoImg} alt="الشوربجي للبلاستيك" className="max-w-full max-h-full object-contain" />
+            </div>
             <div className="leading-tight">
               <div className="font-bold text-lg bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] bg-clip-text text-transparent">
                 الشوربجي للبلاستيك
@@ -341,6 +382,9 @@ export default function ProductPage() {
               </button>
             ))}
           </div>
+
+          
+
         </section>
 
         {/* ----------------------------------------
@@ -389,42 +433,62 @@ export default function ProductPage() {
 
          
 
-          {/* Quantity Selector - Desktop Only */}
-          <div className="hidden lg:block space-y-2">
-            <label className="text-sm font-semibold text-neutral-700">
-              الكمية:
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(-1)}
-                className="p-2 rounded-lg border-2 border-neutral-300 text-neutral-700 hover:border-[#2f83aa] hover:text-[#2f83aa] transition-colors"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <div className="px-6 py-2 border-2 border-neutral-300 rounded-lg font-semibold text-lg text-neutral-900 min-w-[80px] text-center">
-                {quantity}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(1)}
-                className="p-2 rounded-lg border-2 border-neutral-300 text-neutral-700 hover:border-[#2f83aa] hover:text-[#2f83aa] transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+          {/* Offer Cards - Desktop Only */}
+          <div className="mt-2 w-full">
+            <label className="text-sm font-semibold text-neutral-700">العروض:</label>
+            <div className="mt-2 w-full grid grid-cols-3 gap-3 py-2">
+              {offers.map((o, idx) => {
+                const active = selectedOffer === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOffer(idx);
+                      setQuantity(o.count);
+                    }}
+                    aria-pressed={active}
+                    className={
+                      "flex flex-col items-center w-full px-3 py-3 rounded-xl text-sm text-center transition-all duration-300 transform hover:scale-105 " +
+                      (active
+                        ? "bg-gradient-to-br from-[#2f83aa] to-[#1a5f7a] text-white shadow-lg ring-2 ring-[#7fc0d6] ring-offset-2"
+                        : "bg-white text-neutral-700 border-2 border-cyan-100 hover:border-[#2f83aa] hover:bg-cyan-50 shadow-md")
+                    }
+                  >
+                    <span className="font-bold text-base">🎁 عرض {o.count}</span>
+                    <span className={"text-xs " + (active ? "text-cyan-100" : "text-neutral-500")}> 
+                      {o.count} طقم — {o.price} جنيه
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+           {/* Contact Info */}
+            {/* Benefits Row: four icons with short Arabic labels */}
+            <div className="mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center items-center">
+                <div className="flex flex-col items-center gap-2 p-3 bg-white/40 rounded-lg">
+                  <Truck className="w-8 h-8 text-[#2f83aa]" />
+                  <div className="text-sm font-semibold text-neutral-800">التوصيل لحد باب البيت</div>
+                </div>
 
-          {/* Order Now Button */}
-          <button
-            onClick={handleOrderSubmit}
-            className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] text-white font-bold text-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <ShoppingBag className="w-6 h-6" />
-            اطلب الآن
-          </button>
+                <div className="flex flex-col items-center gap-2 p-3 bg-white/40 rounded-lg">
+                  <DollarSign className="w-8 h-8 text-[#2f83aa]" />
+                  <div className="text-sm font-semibold text-neutral-800">الدفع عند الاستلام</div>
+                </div>
 
-          {/* Contact Info */}
+                <div className="flex flex-col items-center gap-2 p-3 bg-white/40 rounded-lg">
+                  <Headphones className="w-8 h-8 text-[#2f83aa]" />
+                  <div className="text-sm font-semibold text-neutral-800">في خدمتك دائماً</div>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 p-3 bg-white/40 rounded-lg">
+                  <Award className="w-8 h-8 text-[#2f83aa]" />
+                  <div className="text-sm font-semibold text-neutral-800">ضمان وجودة عالية</div>
+                </div>
+              </div>
+            </div>
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-300">
             <div className="flex items-center gap-3 justify-center">
               <Phone className="w-5 h-5 text-green-600" />
@@ -439,7 +503,103 @@ export default function ProductPage() {
               شحن مجاني لكل محافظات مصر
             </p>
           </div>
+          {/* Order Now Button removed from here; moved below the form */}
+          {/* Delivery Form (moved to right column) */}
+          <form onSubmit={handleOrderSubmit} className="mt-6 space-y-3">
+            <h3 className="text-lg font-bold text-[#2f83aa]">بيانات التوصيل</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                required
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                type="text"
+                placeholder="الاسم"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+              />
+              <input
+                required
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                type="tel"
+                placeholder="رقم الهاتف"
+                pattern="01[0125][0-9]{8}"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+              />
+            </div>
+
+            <input
+              name="otherPhones"
+              value={formData.otherPhones}
+              onChange={handleInputChange}
+              type="text"
+              placeholder="هواتف أخرى (افصلها بفاصلة)"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa] mt-3"
+            />
+
+            
+
+            <select
+              required
+              name="province"
+              value={formData.province}
+              onChange={handleInputChange}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+            >
+              <option value="">-- اختر المحافظة --</option>
+              {(citiesData || []).map((c) => (
+                <option key={c._id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            <input
+              name="city"
+              value={formData.city}
+              onChange={handleInputChange}
+              type="text"
+              placeholder="المدينة (اختياري)"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+            />
+              <input
+              required
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              type="text"
+              placeholder="العنوان التفصيلي"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+            />
+            <textarea
+              name="note"
+              value={formData.note}
+              onChange={handleInputChange}
+              placeholder="ملاحظة (اختياري)"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa] mt-3"
+              rows={3}
+            />
+
+          
+
+            <p className="text-sm text-neutral-600">املأ البيانات ثم اضغط "اطلب الآن" للتأكيد.</p>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] text-white font-bold text-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                <ShoppingBag className="w-6 h-6" />
+                اطلب الآن
+              </button>
+            </div>
+          </form>
+
+          
         </section>
+
+          
       </main>
 
       {/* ================================================================
@@ -509,7 +669,7 @@ export default function ProductPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-700">سعر التوصيل:</span>
-                    <span className="font-semibold">{delivery} جنيه</span>
+                    <span className="font-semibold">{deliveryLabel}</span>
                   </div>
                   <div className="flex justify-between border-t border-neutral-300 pt-2 mt-2">
                     <span className="font-bold text-lg">الإجمالي:</span>
@@ -521,46 +681,27 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {/* Modal Footer - Form */}
-            <form onSubmit={handleConfirmOrder} className="p-6 bg-neutral-50 rounded-b-2xl space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
-                  required
-                  name="name"
-                  type="text"
-                  placeholder="الاسم"
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-                />
-                <input
-                  required
-                  name="phone"
-                  type="tel"
-                  placeholder="رقم الهاتف"
-                  pattern="01[0125][0-9]{8}"
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-                />
+            {/* Modal Footer - Confirmation only */}
+            <div className="p-6 bg-neutral-50 rounded-b-2xl space-y-3">
+              <h3 className="font-bold text-lg text-[#2f83aa]">بيانات التوصيل</h3>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-neutral-700">الاسم:</span>
+                  <span className="font-semibold">{formData.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-700">الهاتف:</span>
+                  <span className="font-semibold">{formData.phone}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-700">المحافظة:</span>
+                  <span className="font-semibold">{formData.province}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-700">العنوان:</span>
+                  <span className="font-semibold">{formData.address}</span>
+                </div>
               </div>
-
-              <select
-                required
-                name="province"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-              >
-                <option value="">-- اختر المحافظة --</option>
-                {(citiesData || []).map((c) => (
-                  <option key={c._id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                required
-                name="address"
-                type="text"
-                placeholder="العنوان التفصيلي"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-              />
 
               <div className="flex gap-3 mt-4">
                 <button
@@ -572,7 +713,8 @@ export default function ProductPage() {
                   تعديل
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleConfirmOrder()}
                   disabled={isSubmitting}
                   className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -589,7 +731,7 @@ export default function ProductPage() {
                   )}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -597,36 +739,14 @@ export default function ProductPage() {
       {/* ================================================================
           STICKY BOTTOM BAR - Mobile Only with Quantity
           ================================================================ */}
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-50">
+      <div className="fixed inset-x-0 bottom-0 z-50">
         <div className="w-full bg-white border-t-2 border-[#2f83aa] shadow-2xl">
-          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
-            {/* Quantity Selector */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(-1)}
-                className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors shadow-md"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <div className="px-4 py-2 bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] text-white rounded-lg font-bold text-lg min-w-[60px] text-center shadow-md">
-                {quantity}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(1)}
-                className="p-2 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors shadow-md"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Order Button */}
+          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-center gap-4">
             <button
               onClick={handleOrderSubmit}
-              className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] text-white font-bold text-base shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 rounded-full bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] text-white font-bold text-base shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 lg:w-44 lg:px-4 lg:py-2 lg:rounded-md lg:text-sm"
             >
-              <ShoppingBag className="w-5 h-5" />
+              <ShoppingBag className="w-5 h-5 lg:w-4 lg:h-4" />
               اطلب الآن
             </button>
           </div>
@@ -642,11 +762,7 @@ export default function ProductPage() {
             {/* Brand Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <img
-                  src={logoImg}
-                  alt="الشوربجي للبلاستيك"
-                  className="w-12 h-12 object-cover rounded-full ring-2 ring-cyan-400 ring-offset-2 ring-offset-neutral-900"
-                />
+                
                 <div>
                   <h3 className="text-2xl font-bold">
                     مجموعة الشوربجي للبلاستيك
@@ -675,11 +791,11 @@ export default function ProductPage() {
                     <Phone className="w-4 h-4 text-white" />
                   </div>
                   <div dir="ltr" className="text-left">
-                    <div className="text-xs text-neutral-400">Phone</div>
-                    <div className="text-cyan-200 font-medium">
-                      01119914401
+                      <div className="text-xs text-neutral-300">Phone</div>
+                      <div className="text-cyan-200 font-medium">
+                        01119914401
+                      </div>
                     </div>
-                  </div>
                 </a>
                 <div className="text-sm text-cyan-300">
                   <MapPin className="inline w-4 h-4 mr-2" />
@@ -689,12 +805,11 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
-
         {/* Bottom Bar */}
         <div className="border-t border-white/10 bg-black/30">
           <div className="mx-auto max-w-6xl px-6 py-4 text-center">
             <span className="text-sm text-neutral-400">
-              جميع الحقوق محفوظة © {new Date().getFullYear()} مجموعة الشوربجي للبلاستيك
+              Created by SABERGROUPSTUDIOS © www.sabergroup-eg.com
             </span>
           </div>
         </div>
