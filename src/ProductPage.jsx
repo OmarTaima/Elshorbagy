@@ -349,22 +349,21 @@ export default function ProductPage() {
           HEADER - Sticky navigation bar with logo
           ================================================================ */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-[#2f83aa] shadow-sm">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-20 h-20 flex items-center justify-center p-1">
-              <img src={logoImg} alt="الشوربجي للبلاستيك" className="max-w-full max-h-full object-contain" />
+        <div className="mx-auto max-w-6xl px-4 py-3 relative">
+   
+          <div className="flex items-center justify-center">
+            <div className="w-32 h-18 flex items-center justify-center p-1">
+              <img src={logoImg} alt="الشوربجي للبلاستيك" className="w-full h-full object-contain" />
             </div>
-            <div className="leading-tight">
+          </div>
+
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex items-center leading-tight text-right">
+            <div>
               <div className="font-bold text-lg bg-gradient-to-r from-[#2f83aa] to-[#1a5f7a] bg-clip-text text-transparent">
                 الشوربجي للبلاستيك
               </div>
-              <div className="text-xs text-[#2f83aa]">
-                جودة عالية وأمان
-              </div>
+              <div className="text-xs text-[#2f83aa]">جودة عالية وأمان</div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-[#2f83aa]" />
           </div>
         </div>
       </header>
@@ -852,7 +851,7 @@ export default function ProductPage() {
         <div className="border-t border-white/10 bg-black/30">
           <div className="mx-auto max-w-6xl px-6 py-4 text-center">
             <span className="text-sm text-neutral-400">
-              Created by SABERGROUPSTUDIOS © www.sabergroup-eg.com
+              Created by <a href="https://www.sabergroup-eg.com" target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline">SABERGROUPSTUDIOS</a> © <a href="https://www.sabergroup-eg.com" target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline">www.sabergroup-eg.com</a>
             </span>
           </div>
         </div>
