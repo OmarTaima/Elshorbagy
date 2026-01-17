@@ -36,7 +36,7 @@ export default function ProductPage() {
   const productDetails = {
     name: "طقم علب التلاجة الشوربجي – 18 قطعة",
     price: 0, // Will be set based on your pricing
-    description: "علبه بلاستيك، محكمة الغلق 18",
+    description: "18 علبة بلاستيكية متنوعة الأحجام لتنظيم وحفظ الطعام داخل التلاجة بأمان وجودة عالية.",
     pieces: [
       "4 علب مستطيلة سعة 500 مل",
       "4 علب مستطيلة مسطحة سعة 500 مل",
@@ -125,6 +125,10 @@ export default function ProductPage() {
   const handleMediaClick = (index) => {
     setCurrentMedia(index);
     if (galleryMedia[index].type === "video" && videoRef.current) {
+      try {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1;
+      } catch (err) {}
       videoRef.current.load();
       videoRef.current.play().catch(() => {});
     }
@@ -133,6 +137,29 @@ export default function ProductPage() {
   const handleQuantityChange = (delta) => {
     setQuantity((prev) => Math.max(1, prev + delta));
   };
+
+  // Attempt autoplay on mount (may be blocked by browser if autoplay with sound is not allowed)
+  useEffect(() => {
+    try {
+      const v = videoRef.current;
+      if (v && galleryMedia[currentMedia]?.type === "video") {
+        v.loop = true;
+        // start muted so browsers allow autoplay, then try to unmute
+        v.muted = true;
+        v.volume = 1;
+        v.play()
+          .then(() => {
+            try {
+              // best-effort unmute (may be blocked by browser policy)
+              v.muted = false;
+              v.volume = 1;
+            } catch (e) {}
+          })
+          .catch(() => {});
+      }
+    } catch (err) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOrderSubmit = (e) => {
     e.preventDefault();
@@ -273,9 +300,9 @@ export default function ProductPage() {
                 ref={videoRef}
                 src={galleryMedia[currentMedia].src}
                 className="w-full h-auto"
-                controls
                 playsInline
                 autoPlay
+                loop
                 muted
               />
             ) : (
