@@ -174,24 +174,51 @@ export default function ProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMedia]);
 
-  // Global listener: unmute the video on any first user interaction (click/keydown/touch/pointer)
+  // Global interaction handling: unmute on first interaction and keep replaying on interactions
   useEffect(() => {
     const events = ["click", "keydown", "touchstart", "pointerdown"];
-    const unmute = () => {
+    let didUnmute = false;
+
+    const interactionHandler = () => {
       try {
         const v = videoRef.current;
-        if (v) {
+        if (!v) return;
+        if (!didUnmute) {
           v.muted = false;
           v.volume = 1;
-          // Ensure playback continues after unmuting
-          v.play().catch(() => {});
+          didUnmute = true;
         }
+        // Try to resume playback after any interaction
+        v.play().catch(() => {});
       } catch (e) {}
-      events.forEach((ev) => document.removeEventListener(ev, unmute));
     };
 
-    events.forEach((ev) => document.addEventListener(ev, unmute, { passive: true }));
-    return () => events.forEach((ev) => document.removeEventListener(ev, unmute));
+    events.forEach((ev) => document.addEventListener(ev, interactionHandler, { passive: true }));
+
+    // If the video gets paused unexpectedly (some mobile interactions), try to resume
+    const onPause = () => {
+      try {
+        const v = videoRef.current;
+        if (!v) return;
+        const active = document.activeElement;
+        const tag = active && active.tagName;
+        // If user is interacting with an input/textarea/select, don't force-play
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (active && active.isContentEditable)) {
+          return;
+        }
+        setTimeout(() => {
+          v.play().catch(() => {});
+        }, 150);
+      } catch (e) {}
+    };
+
+    const v = videoRef.current;
+    if (v) v.addEventListener("pause", onPause);
+
+    return () => {
+      events.forEach((ev) => document.removeEventListener(ev, interactionHandler));
+      if (v) v.removeEventListener("pause", onPause);
+    };
   }, []);
 
   const handleOrderSubmit = (e) => {
