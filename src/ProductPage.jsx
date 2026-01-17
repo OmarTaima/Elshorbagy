@@ -86,6 +86,7 @@ export default function ProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const videoRef = useRef(null);
+  const userUnmutedRef = useRef(false);
   const [formData, setFormData] = useState({ name: "", phone: "", province: "", city: "", address: "", otherPhones: "", isWhatsapp: false, note: "" });
 
   // --------------------------------------------------------------------------
@@ -141,6 +142,10 @@ export default function ProductPage() {
   const handleMediaClick = (index) => {
     setCurrentMedia(index);
     if (galleryMedia[index].type === "video" && videoRef.current) {
+      // mark that the user interacted and prefers sound
+      try {
+        userUnmutedRef.current = true;
+      } catch (e) {}
       try {
         videoRef.current.muted = false;
         videoRef.current.volume = 1;
@@ -165,8 +170,9 @@ export default function ProductPage() {
       const v = videoRef.current;
       if (v && galleryMedia[currentMedia]?.type === "video") {
         v.loop = true;
-        // start muted so browsers allow autoplay
-        v.muted = true;
+        // start muted so browsers allow autoplay, unless user already unmuted
+        if (!userUnmutedRef.current) v.muted = true;
+        else v.muted = false;
         v.volume = 1;
         v.play().catch(() => {});
       }
@@ -177,16 +183,14 @@ export default function ProductPage() {
   // Global interaction handling: unmute on first interaction and keep replaying on interactions
   useEffect(() => {
     const events = ["click", "keydown", "touchstart", "pointerdown"];
-    let didUnmute = false;
-
     const interactionHandler = () => {
       try {
         const v = videoRef.current;
         if (!v) return;
-        if (!didUnmute) {
+        if (!userUnmutedRef.current) {
           v.muted = false;
           v.volume = 1;
-          didUnmute = true;
+          userUnmutedRef.current = true;
         }
         // Try to resume playback after any interaction
         v.play().catch(() => {});
