@@ -183,6 +183,8 @@ export default function ProductPage() {
         if (v) {
           v.muted = false;
           v.volume = 1;
+          // Ensure playback continues after unmuting
+          v.play().catch(() => {});
         }
       } catch (e) {}
       events.forEach((ev) => document.removeEventListener(ev, unmute));
