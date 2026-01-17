@@ -165,21 +165,31 @@ export default function ProductPage() {
       const v = videoRef.current;
       if (v && galleryMedia[currentMedia]?.type === "video") {
         v.loop = true;
-        // start muted so browsers allow autoplay, then try to unmute
+        // start muted so browsers allow autoplay
         v.muted = true;
         v.volume = 1;
-        v.play()
-          .then(() => {
-            try {
-              // best-effort unmute (may be blocked by browser policy)
-              v.muted = false;
-              v.volume = 1;
-            } catch (e) {}
-          })
-          .catch(() => {});
+        v.play().catch(() => {});
       }
     } catch (err) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMedia]);
+
+  // Global listener: unmute the video on any first user interaction (click/keydown/touch/pointer)
+  useEffect(() => {
+    const events = ["click", "keydown", "touchstart", "pointerdown"];
+    const unmute = () => {
+      try {
+        const v = videoRef.current;
+        if (v) {
+          v.muted = false;
+          v.volume = 1;
+        }
+      } catch (e) {}
+      events.forEach((ev) => document.removeEventListener(ev, unmute));
+    };
+
+    events.forEach((ev) => document.addEventListener(ev, unmute, { passive: true }));
+    return () => events.forEach((ev) => document.removeEventListener(ev, unmute));
   }, []);
 
   const handleOrderSubmit = (e) => {
