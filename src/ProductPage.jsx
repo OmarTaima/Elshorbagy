@@ -23,7 +23,6 @@ import image3 from "./assets/WhatsApp Image 2026-01-15 at 9.06.46 AM.jpeg";
 import image4 from "./assets/WhatsApp Image 2026-01-15 at 9.06.47 AM.jpeg";
 import { addOrder } from "./api";
 import Swal from "sweetalert2";
-import branchesData from "./branches.json";
 import citiesData from "./cities.json";
 
 
@@ -109,13 +108,6 @@ export default function ProductPage() {
     return m;
   }, []);
 
-  const branchesById = useMemo(() => {
-    const m = new Map();
-    (branchesData || []).forEach((b) => {
-      if (b && b._id) m.set(b._id, b);
-    });
-    return m;
-  }, []);
 
   // --------------------------------------------------------------------------
   // CALCULATIONS
@@ -274,14 +266,40 @@ export default function ProductPage() {
         cityId = citiesByName.get(province.toLowerCase()) || null;
       }
 
-      // Product item id can be provided via env for production, otherwise use a placeholder
-      const PRODUCT_ITEM_ID = import.meta.env.VITE_PRODUCT_ITEM_ID || "603b2c3d4e5f678901234567";
+      // Product item ids can be provided via env for production.
+      // Support multiple env names and per-offer item ids (item2, item3).
+      const ITEM1 = import.meta.env.VITE_CRM_ITEM_ID || import.meta.env.VITE_PRODUCT_ITEM_ID || import.meta.env.VITE_ITEM_ID || "";
+      const ITEM2 = import.meta.env.VITE_CRM_ITEM_ID_2 || import.meta.env.VITE_PRODUCT_ITEM_ID_2 || import.meta.env.VITE_ITEM_ID_2 || import.meta.env.VITE_CRM_ITEM2 || import.meta.env.VITE_PRODUCT_ITEM2 || "";
+      const ITEM3 = import.meta.env.VITE_CRM_ITEM_ID_3 || import.meta.env.VITE_PRODUCT_ITEM_ID_3 || import.meta.env.VITE_ITEM_ID_3 || import.meta.env.VITE_CRM_ITEM3 || import.meta.env.VITE_PRODUCT_ITEM3 || "";
 
       // Parse other phones (comma separated) into an array
       const otherPhonesArr = (formData.otherPhones || "")
         .split(",")
         .map((p) => p.trim())
         .filter(Boolean);
+
+      // Determine the actual ordered quantity: if an offer is selected use its count
+      const orderedQuantity = (offers[selectedOffer] && offers[selectedOffer].count) || quantity;
+
+      // Select item id based on the ordered quantity (offer). Prefer specific item ids for offers when present.
+      let selectedItemId = ITEM1;
+      if (orderedQuantity === 2 && ITEM2) selectedItemId = ITEM2;
+      else if (orderedQuantity === 3 && ITEM3) selectedItemId = ITEM3;
+
+      // Defensive check: ensure we have a selected item id before sending the order
+      if (!selectedItemId) {
+        Swal.fire({
+          icon: "error",
+          title: "خطأ",
+          text: "معرف المنتج مفقود. حاول مرة أخرى لاحقاً.",
+          confirmButtonColor: "#2f83aa",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Compute discount based on selected offer
+      const discountValue = orderedQuantity === 2 ? 99 : orderedQuantity === 3 ? 298 : 0;
 
       const orderData = {
         name,
@@ -290,7 +308,6 @@ export default function ProductPage() {
         addresses: [{
           area: "",
           street: address,
-          city: formData.city || "",
           landmark: "",
         }],
         city: cityId || "",
@@ -299,18 +316,21 @@ export default function ProductPage() {
         isWhatsapp: !!formData.isWhatsapp,
         items: [
           {
-            item: PRODUCT_ITEM_ID,
-            quantity: String(quantity),
+            item: selectedItemId,
+            quantity: String(orderedQuantity),
           },
         ],
         shippingFee: String(delivery),
-        totalDiscount: "0",
+        totalDiscount: String(discountValue),
         orderOnly: {
-          userNote: formData.note || `طقم علب تلاجة الشوربجي - ${quantity} طقم - ${productDetails.name}`,
+          userNote: String((formData.note && String(formData.note).trim()) || `طقم علب تلاجة الشوربجي - ${orderedQuantity} طقم - ${productDetails.name} - المجموع ${subtotal} جنيه`),
         },
         branch: DEFAULT_BRANCH_ID || "",
       };
 
+      // Debug: log outgoing order payload to help diagnose server errors
+      // (remove or disable in production)
+      console.debug("Outgoing orderData:", orderData);
       await addOrder(orderData);
 
       Swal.fire({
@@ -325,10 +345,17 @@ export default function ProductPage() {
       setQuantity(1);
     } catch (error) {
       console.error("Order error:", error);
+      // Try to surface backend error details when available
+      const serverData = error && error.response && error.response.data ? error.response.data : null;
+      const serverMessage = serverData && (serverData.message || serverData.error) ? (serverData.message || serverData.error) : null;
+      // Log full server response for debugging
+      if (serverData) console.debug("Server response data:", serverData);
+
       Swal.fire({
         icon: "error",
-        title: "حدث خطأ",
-        text: "حاول مرة أخرى",
+        title: serverMessage ? `خطأ: ${serverMessage}` : "حدث خطأ",
+        text: serverMessage ? "تفاصيل مذكورة في الأسفل" : (error.message || "حاول مرة أخرى"),
+        footer: serverData ? `<pre style=\"text-align:left;direction:ltr;white-space:pre-wrap;\">${JSON.stringify(serverData)}</pre>` : undefined,
         confirmButtonColor: "#2f83aa",
       });
     } finally {
@@ -343,7 +370,7 @@ export default function ProductPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-svh bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-neutral-900"
+      className="min-h-svh bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-neutral-900 lg-pb-15"
     >
       {/* ================================================================
           HEADER - Sticky navigation bar with logo
@@ -550,78 +577,109 @@ export default function ProductPage() {
           <form onSubmit={handleOrderSubmit} className="mt-6 space-y-3">
             <h3 className="text-lg font-bold text-[#2f83aa]">بيانات التوصيل</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-neutral-700 mb-1">الاسم</label>
+                <input
+                  id="name"
+                  required
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  type="text"
+                  placeholder="اكتب اسمك الكامل"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-neutral-700 mb-1">رقم الهاتف</label>
+                <input
+                  id="phone"
+                  required
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  type="tel"
+                  placeholder="01XXXXXXXXX"
+                  pattern="01[0125][0-9]{8}"
+                  className="w-full dir-ltr rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <label htmlFor="otherPhones" className="block text-sm font-medium text-neutral-700 mb-1">رقم هاتف احتياطي (اختياري)</label>
               <input
-                required
-                name="name"
-                value={formData.name}
+                id="otherPhones"
+                name="otherPhones"
+                value={formData.otherPhones}
                 onChange={handleInputChange}
                 type="text"
-                placeholder="الاسم"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-              />
-              <input
-                required
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                type="tel"
-                placeholder="رقم الهاتف"
-                pattern="01[0125][0-9]{8}"
+                placeholder="01XXXXXXXXX"
                 className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
               />
             </div>
 
-            <input
-              name="otherPhones"
-              value={formData.otherPhones}
-              onChange={handleInputChange}
-              type="text"
-              placeholder="هواتف أخرى (افصلها بفاصلة)"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa] mt-3"
-            />
-
             
 
-            <select
-              required
-              name="province"
-              value={formData.province}
-              onChange={handleInputChange}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-            >
-              <option value="">-- اختر المحافظة --</option>
-              {(citiesData || []).map((c) => (
-                <option key={c._id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-3">
+              <label htmlFor="province" className="block text-sm font-medium text-neutral-700 mb-1">المحافظة</label>
+              <select
+                id="province"
+                required
+                name="province"
+                value={formData.province}
+                onChange={handleInputChange}
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+              >
+                <option value="">-- اختر المحافظة --</option>
+                {(citiesData || []).map((c) => (
+                  <option key={c._id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <input
-              name="city"
-              value={formData.city}
-              onChange={handleInputChange}
-              type="text"
-              placeholder="المدينة (اختياري)"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-            />
+            <div className="mt-3">
+              <label htmlFor="city" className="block text-sm font-medium text-neutral-700 mb-1">المدينة</label>
               <input
-              required
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              type="text"
-              placeholder="العنوان التفصيلي"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
-            />
-            <textarea
-              name="note"
-              value={formData.note}
-              onChange={handleInputChange}
-              placeholder="ملاحظة (اختياري)"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa] mt-3"
-              rows={3}
-            />
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleInputChange}
+                type="text"
+                placeholder="المدينة"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+              />
+            </div>
+
+            <div className="mt-3">
+              <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">العنوان</label>
+              <input
+                id="address"
+                required
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                type="text"
+                placeholder="المدينة، الشارع، أقرب علامة مميزة"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+              />
+            </div>
+
+            <div className="mt-3">
+              <label htmlFor="note" className="block text-sm font-medium text-neutral-700 mb-1">ملاحظات</label>
+              <textarea
+                id="note"
+                name="note"
+                value={formData.note}
+                onChange={handleInputChange}
+                placeholder="أي تفاصيل إضافية للطلب"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa] mt-1"
+                rows={3}
+              />
+            </div>
 
           
 
@@ -851,8 +909,7 @@ export default function ProductPage() {
         <div className="border-t border-white/10 bg-black/30">
           <div className="mx-auto max-w-6xl px-6 py-4 text-center">
             <span className="text-sm text-neutral-400">
-              Created by <a href="https://www.sabergroup-eg.com" target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline">SABERGROUPSTUDIOS</a> © <a href="https://www.sabergroup-eg.com" target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline">www.sabergroup-eg.com</a>
-            </span>
+              Created by <a href="https://www.sabergroup-eg.com" target="_blank" rel="noopener noreferrer" className="text-cyan-200 hover:underline">SABERGROUPSTUDIOS</a> © </span>
           </div>
         </div>
       </footer>
