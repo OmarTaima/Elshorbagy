@@ -558,20 +558,7 @@ export default function ProductPage() {
                 </div>
               </div>
             </div>
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-300">
-            <div className="flex items-center gap-3 justify-center">
-              <Phone className="w-5 h-5 text-green-600" />
-              <a
-                href="tel:01119914401"
-                className="text-lg font-bold text-green-700 hover:text-green-900"
-              >
-                01119914401
-              </a>
-            </div>
-            <p className="text-center text-sm text-green-600 mt-2">
-              شحن مجاني لكل محافظات مصر
-            </p>
-          </div>
+       
           {/* Order Now Button removed from here; moved below the form */}
           {/* Delivery Form (moved to right column) */}
           <form onSubmit={handleOrderSubmit} className="mt-6 space-y-3">
@@ -876,34 +863,7 @@ export default function ProductPage() {
               </p>
             </div>
 
-            {/* Contact Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-300">
-                <Phone className="w-5 h-5" />
-                تواصل معنا
-              </h3>
-              <div className="space-y-3">
-                <a
-                  href="tel:01119914401"
-                  className="flex items-center gap-3 ml-auto text-sm bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-all hover:scale-105 border border-white/10"
-                  style={{direction: 'ltr'}}
-                >
-                  <div className="bg-green-500 p-2 rounded-full">
-                    <Phone className="w-4 h-4 text-white" />
-                  </div>
-                  <div dir="rtl" className="text-left">
-                      <div className="text-xs text-neutral-300">Phone</div>
-                      <div className="text-cyan-200 font-medium">
-                        01119914401
-                      </div>
-                    </div>
-                </a>
-                <div className="text-sm text-cyan-300">
-                  <MapPin className="inline w-4 h-4 mr-2" />
-                  شحن مجاني لكل محافظات مصر
-                </div>
-              </div>
-            </div>
+            
           </div>
         </div>
         {/* Bottom Bar */}
