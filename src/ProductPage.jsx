@@ -885,12 +885,13 @@ export default function ProductPage() {
               <div className="space-y-3">
                 <a
                   href="tel:01119914401"
-                  className="flex items-center gap-3 text-sm bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-all hover:scale-105 border border-white/10"
+                  className="flex items-center gap-3 ml-auto text-sm bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-all hover:scale-105 border border-white/10"
+                  style={{direction: 'ltr'}}
                 >
                   <div className="bg-green-500 p-2 rounded-full">
                     <Phone className="w-4 h-4 text-white" />
                   </div>
-                  <div dir="ltr" className="text-left">
+                  <div dir="rtl" className="text-left">
                       <div className="text-xs text-neutral-300">Phone</div>
                       <div className="text-cyan-200 font-medium">
                         01119914401
