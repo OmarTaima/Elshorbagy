@@ -370,7 +370,7 @@ export default function ProductPage() {
   return (
     <div
       dir="rtl"
-      className="min-h-svh bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-neutral-900 lg-pb-15"
+      className="min-h-svh bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-neutral-900 lg:pb-15"
     >
       {/* ================================================================
           HEADER - Sticky navigation bar with logo
