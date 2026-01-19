@@ -840,7 +840,7 @@ export default function ProductPage() {
       {/* ================================================================
           STICKY BOTTOM BAR - Mobile Only with Quantity
           ================================================================ */}
-      <div className="fixed inset-x-0 bottom-0 z-50">
+      <div className="fixed inset-x-0 bottom-0 z-30">
         <div className="w-full bg-white border-t-2 border-[#2f83aa] shadow-2xl">
           <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-center gap-4">
             <button
