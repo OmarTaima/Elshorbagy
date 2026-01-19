@@ -86,7 +86,7 @@ export default function ProductPage() {
 
   const videoRef = useRef(null);
   const userUnmutedRef = useRef(false);
-  const [formData, setFormData] = useState({ name: "", phone: "", province: "", city: "", address: "", otherPhones: "", isWhatsapp: false, note: "" });
+  const [formData, setFormData] = useState({ name: "", phone: "", province: "", city: "", address: "", isWhatsapp: false, whatsappNumber: "", note: "" });
 
   // --------------------------------------------------------------------------
   // LOOKUPS
@@ -272,11 +272,10 @@ export default function ProductPage() {
       const ITEM2 = import.meta.env.VITE_CRM_ITEM_ID_2 || import.meta.env.VITE_PRODUCT_ITEM_ID_2 || import.meta.env.VITE_ITEM_ID_2 || import.meta.env.VITE_CRM_ITEM2 || import.meta.env.VITE_PRODUCT_ITEM2 || "";
       const ITEM3 = import.meta.env.VITE_CRM_ITEM_ID_3 || import.meta.env.VITE_PRODUCT_ITEM_ID_3 || import.meta.env.VITE_ITEM_ID_3 || import.meta.env.VITE_CRM_ITEM3 || import.meta.env.VITE_PRODUCT_ITEM3 || "";
 
-      // Parse other phones (comma separated) into an array
-      const otherPhonesArr = (formData.otherPhones || "")
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean);
+      // Build otherPhones array: include whatsapp number only when `isWhatsapp` is true
+      const otherPhonesArr = (formData.isWhatsapp && formData.whatsappNumber && String(formData.whatsappNumber).trim())
+        ? [String(formData.whatsappNumber).trim()]
+        : [];
 
       // Determine the actual ordered quantity: if an offer is selected use its count
       const orderedQuantity = (offers[selectedOffer] && offers[selectedOffer].count) || quantity;
@@ -341,7 +340,7 @@ export default function ProductPage() {
       });
 
       setShowModal(false);
-      setFormData({ name: "", phone: "", province: "", city: "", address: "" });
+      setFormData({ name: "", phone: "", province: "", city: "", address: "", isWhatsapp: false, whatsappNumber: "", note: "" });
       setQuantity(1);
     } catch (error) {
       console.error("Order error:", error);
@@ -594,18 +593,33 @@ export default function ProductPage() {
               </div>
             </div>
 
-            <div className="mt-3">
-              <label htmlFor="otherPhones" className="block text-sm font-medium text-neutral-700 mb-1">رقم هاتف احتياطي (اختياري)</label>
+            <div className="mt-3 flex items-center gap-3">
               <input
-                id="otherPhones"
-                name="otherPhones"
-                value={formData.otherPhones}
+                id="isWhatsapp"
+                name="isWhatsapp"
+                checked={formData.isWhatsapp}
                 onChange={handleInputChange}
-                type="text"
-                placeholder="01XXXXXXXXX"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+                type="checkbox"
+                className="w-4 h-4 rounded"
               />
+              <label htmlFor="isWhatsapp" className="text-sm font-medium text-neutral-700">أريد إضافة رقم واتساب (اختياري)</label>
             </div>
+
+            {formData.isWhatsapp && (
+              <div className="mt-3">
+                <label htmlFor="whatsappNumber" className="block text-sm font-medium text-neutral-700 mb-1">رقم واتساب </label>
+                <input
+                  id="whatsappNumber"
+                  name="whatsappNumber"
+                  value={formData.whatsappNumber}
+                  onChange={handleInputChange}
+                  type="tel"
+                  placeholder="01XXXXXXXXX"
+                  pattern="01[0125][0-9]{8}"
+                  className="w-full dir-ltr rounded-lg border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2f83aa]"
+                />
+              </div>
+            )}
 
             
 
