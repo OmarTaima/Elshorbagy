@@ -113,7 +113,6 @@ export default function ProductPage() {
   // CALCULATIONS
   // --------------------------------------------------------------------------
 
-  const unitPrice = 250; // Set your actual price
   const offers = [
     { count: 1, price: 499 },
     { count: 2, price: 899 },
@@ -122,7 +121,7 @@ export default function ProductPage() {
 
   const [selectedOffer, setSelectedOffer] = useState(0);
 
-  const subtotal = offers[selectedOffer]?.price ?? unitPrice * quantity;
+  const subtotal = offers[selectedOffer]?.price ?? 0;
   const delivery = 0; // Free shipping mentioned in requirements
   const grandTotal = subtotal + delivery;
   const deliveryLabel = delivery === 0 ? "مجانا" : `${delivery} جنيه`;
@@ -269,9 +268,6 @@ export default function ProductPage() {
       // Product item ids can be provided via env for production.
       // Support multiple env names and per-offer item ids (item2, item3).
       const ITEM1 = import.meta.env.VITE_CRM_ITEM_ID || import.meta.env.VITE_PRODUCT_ITEM_ID || import.meta.env.VITE_ITEM_ID || "";
-      const ITEM2 = import.meta.env.VITE_CRM_ITEM_ID_2 || import.meta.env.VITE_PRODUCT_ITEM_ID_2 || import.meta.env.VITE_ITEM_ID_2 || import.meta.env.VITE_CRM_ITEM2 || import.meta.env.VITE_PRODUCT_ITEM2 || "";
-      const ITEM3 = import.meta.env.VITE_CRM_ITEM_ID_3 || import.meta.env.VITE_PRODUCT_ITEM_ID_3 || import.meta.env.VITE_ITEM_ID_3 || import.meta.env.VITE_CRM_ITEM3 || import.meta.env.VITE_PRODUCT_ITEM3 || "";
-
       // Build otherPhones array: include whatsapp number only when `isWhatsapp` is true
       const otherPhonesArr = (formData.isWhatsapp && formData.whatsappNumber && String(formData.whatsappNumber).trim())
         ? [String(formData.whatsappNumber).trim()]
@@ -280,10 +276,8 @@ export default function ProductPage() {
       // Determine the actual ordered quantity: if an offer is selected use its count
       const orderedQuantity = (offers[selectedOffer] && offers[selectedOffer].count) || quantity;
 
-      // Select item id based on the ordered quantity (offer). Prefer specific item ids for offers when present.
-      let selectedItemId = ITEM1;
-      if (orderedQuantity === 2 && ITEM2) selectedItemId = ITEM2;
-      else if (orderedQuantity === 3 && ITEM3) selectedItemId = ITEM3;
+        // Use single item id for all offers (ITEM1). ITEM2/ITEM3 removed per requirements.
+        const selectedItemId = ITEM1;
 
       // Defensive check: ensure we have a selected item id before sending the order
       if (!selectedItemId) {
@@ -297,8 +291,6 @@ export default function ProductPage() {
         return;
       }
 
-      // Compute discount based on selected offer
-      const discountValue = orderedQuantity === 2 ? 99 : orderedQuantity === 3 ? 298 : 0;
 
       const orderData = {
         name,
@@ -320,7 +312,8 @@ export default function ProductPage() {
           },
         ],
         shippingFee: String(delivery),
-        totalDiscount: String(discountValue),
+        // Apply discount so backend computes the correct offer totals
+        totalDiscount: orderedQuantity === 2 ? 99 : orderedQuantity === 3 ? 298 : 0,
         orderOnly: {
           userNote: String((formData.note && String(formData.note).trim()) || `طقم علب تلاجة الشوربجي - ${orderedQuantity} طقم - ${productDetails.name} - المجموع ${subtotal} جنيه`),
         },
