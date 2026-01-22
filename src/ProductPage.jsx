@@ -86,6 +86,7 @@ export default function ProductPage() {
 
   const videoRef = useRef(null);
   const userUnmutedRef = useRef(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [formData, setFormData] = useState({ name: "", phone: "", province: "", city: "", address: "", isWhatsapp: false, whatsappNumber: "", note: "" });
 
   // --------------------------------------------------------------------------
@@ -135,10 +136,9 @@ export default function ProductPage() {
     if (galleryMedia[index].type === "video" && videoRef.current) {
       // mark that the user interacted and prefers sound
       try {
-        userUnmutedRef.current = true;
+        // do not unmute on media click — mute state is controlled only by the button
       } catch (e) {}
       try {
-        videoRef.current.muted = false;
         videoRef.current.volume = 1;
       } catch (err) {}
       videoRef.current.load();
@@ -161,15 +161,14 @@ export default function ProductPage() {
       const v = videoRef.current;
       if (v && galleryMedia[currentMedia]?.type === "video") {
         v.loop = true;
-        // start muted so browsers allow autoplay, unless user already unmuted
-        if (!userUnmutedRef.current) v.muted = true;
-        else v.muted = false;
+        // respect explicit mute state
+        v.muted = !!isMuted;
         v.volume = 1;
         v.play().catch(() => {});
       }
     } catch (err) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMedia]);
+  }, [currentMedia, isMuted]);
 
   // Global interaction handling: unmute on first interaction and keep replaying on interactions
   useEffect(() => {
@@ -178,12 +177,7 @@ export default function ProductPage() {
       try {
         const v = videoRef.current;
         if (!v) return;
-        if (!userUnmutedRef.current) {
-          v.muted = false;
-          v.volume = 1;
-          userUnmutedRef.current = true;
-        }
-        // Try to resume playback after any interaction
+        // Do NOT unmute on global interactions. Only attempt to resume playback.
         v.play().catch(() => {});
       } catch (e) {}
     };
@@ -215,6 +209,26 @@ export default function ProductPage() {
       if (v) v.removeEventListener("pause", onPause);
     };
   }, []);
+
+  // (Removed capture-phase button handlers to avoid forced interaction flow)
+
+  const toggleMute = () => {
+    try {
+      const v = videoRef.current;
+      const newMuted = !isMuted;
+      setIsMuted(newMuted);
+      if (v) {
+        v.muted = newMuted;
+        if (!newMuted) {
+          userUnmutedRef.current = true;
+          v.volume = 1;
+          v.play().catch(() => {});
+        }
+      }
+    } catch (e) {}
+  };
+
+  
 
   const handleOrderSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -398,15 +412,27 @@ export default function ProductPage() {
           {/* Main Media Display */}
           <div className="relative overflow-hidden rounded-xl border-2 border-[#2f83aa] bg-black shadow-lg">
             {galleryMedia[currentMedia].type === "video" ? (
-              <video
-                ref={videoRef}
-                src={galleryMedia[currentMedia].src}
-                className="w-full h-auto"
-                playsInline
-                autoPlay
-                loop
-                muted
-              />
+              <>
+                <video
+                  ref={videoRef}
+                  src={galleryMedia[currentMedia].src}
+                  className="w-full h-auto"
+                  playsInline
+                  autoPlay
+                  loop
+                  muted={isMuted}
+                />
+
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  aria-pressed={!isMuted}
+                  aria-label={isMuted ? "تشغيل الصوت" : "كتم الصوت"}
+                  className="absolute top-3 right-3 z-20 bg-white/80 text-xs px-3 py-1 rounded-md shadow hover:bg-white/95 transition"
+                >
+                  {isMuted ? "🔈 تشغيل" : "🔇 كتم"}
+                </button>
+              </>
             ) : (
               <img
                 src={galleryMedia[currentMedia].src}
